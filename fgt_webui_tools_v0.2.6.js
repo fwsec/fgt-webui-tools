@@ -12,13 +12,111 @@ Disclaimer   : Script use is of your own risk.
 
 javascript: (async function () {
 
-  const version = "0.2.6";
+  const version = '0.2.6';
+
+  function addCss() {
+
+    var s = document.createElement('style')
+    s.id = 'fortigate-webui';
+
+    var modalStyles = ''.concat(
+      '.modal {',
+      'display: none;',
+      'position: fixed;',
+      'z-index: 1000;',
+      'left: 0;',
+      'top: 0;',
+      'width: 100%;',
+      'height: 100%;',
+      'overflow: auto;',
+      'background-color: rgba(0, 0, 0, 0.7);',
+      '}',
+      '.modal-header { display: flex; flex-direction: row; justify-content: space-between; background-color: rgb(73, 146, 88); padding: 0 10px; align-items: baseline;}',
+      '.modal-header h2, .modal-header span { color: rgba(255, 255, 255, 0.85) }',
+      '.modal-content {',
+      'background-color: rgb(73, 146, 88);',
+      'display: flex;',
+      'flex-direction: column;',
+      'justify-content: space-around;',
+      'margin: auto;',
+      'border: 1px solid #888;',
+      'min-width: 30%;',
+      'max-width: 70%;',
+      'background-color: #fdfdfd;',
+      'box-shadow: 0px 0px 20px 10px rgba(0,0,0,0.6);',
+      '}',
+      '.modal-content pre { width: 100%; align-self: center; background-color: #fdfdfd; margin: 0 !important; }',
+      '.modal-content code { border-left-width: 0 !important; }',
+      '.modal .modal-content pre code { margin: 0 !important; }',
+      '.close {',
+      'color: #aaaaaa;',
+      'float: right;',
+      'font-size: 28px;',
+      'font-weight: bold;',
+      'margin-left: 20px;',
+      '}',
+      '.close:hover,',
+      '.close:focus {',
+      'text-decoration: none;',
+      'cursor: pointer;',
+      '}'
+    );
+    s.innerText = ''.concat(
+      'table.left-align td, table.left-align th { text-align:left !important; border:1px solid grey; padding-left: 5px; padding-right: 5px;}',
+      modalStyles
+    )
+    document.head.appendChild(s)
+  }
+
+  function addShowP1Modal(){
+    var modalContainer = document.createElement("div");
+    modalContainer.id = "showP1ConfigModal";
+    modalContainer.className = "modal";
+
+    const isVisible = elem => !!elem && !!( elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length );
+    function hideOnClickOutside(element, elementToHide) {
+      elementToHide ??= element;
+      const outsideClickListener = event => {
+          if (!element.contains(event.target) && isVisible(elementToHide)) {
+            elementToHide.style.display = 'none';
+          }
+      }
+      document.addEventListener('click', outsideClickListener);
+    }
+
+    var modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+    var headerContent = document.createElement("div");
+    headerContent.className = "modal-header"
+    var header = document.createElement("h2");
+    var closeButton = document.createElement("span");
+
+    closeButton.className = "close";
+    closeButton.innerHTML = "&times;";
+    headerContent.appendChild(header);
+    headerContent.appendChild(closeButton);
+    modalContent.appendChild(headerContent);
+    modalContainer.appendChild(modalContent);
+
+    document.body.appendChild(modalContainer);
+
+    var modal = document.getElementById("showP1ConfigModal");
+    var closeButton = document.querySelector(".close");
+
+    closeButton.onclick = function() { modal.style.display = "none"; };
+    hideOnClickOutside(modalContent, modalContainer);
+  }
+
+  function getShowP1ConfigModalContent() { return document.querySelector("#showP1ConfigModal .modal-content"); }
+  function openShowP1ConfigModal() { var modal = document.getElementById("showP1ConfigModal"); modal.style.display = "flex"; return modal; }
+
+  addCss();
+  addShowP1Modal();
 
   const cliStartingTokens = ["\u0000"]
   const cliStoppingTokens = []
   let wsReady = false;
   let queue = [];
-
   window.addEventListener("fpCliResponse", (evt) => {
     // Three capture groups:
     // command: everything until the \u0000
@@ -97,18 +195,18 @@ javascript: (async function () {
       '<f-icon class="fa-status-down"></f-icon> Down';
   }
 
-  function formatIpsecName(name, proxies) {
+  function formatIpsecName(name, parent, proxies) {
     return "".concat(
       formatStatus(proxies.findIndex(p => p.status == "up") != -1),
       ' ',
-      name
+      parent ?? name
     );
   }
 
   function formatUsername(username) {
     if (username)
       return "".concat('<f-icon class="fa-user-authenticated"></f-icon> ', username);
-    
+
     return "";
   }
 
@@ -236,15 +334,28 @@ javascript: (async function () {
     );
   }
 
-  function formatDebug(name) {
+  function formatDebug(name, parent) {
     return "".concat(
-      '<a href="javascript:" data-action="expand_debug">&nbsp;<f-icon class="fa-plus-circle"></f-icon>&nbsp;</a>',
-      '<div style="display: none;">',
-      '<br>',
-      '<a href="javascript:" data-action="reset_stats" data-p1name="' + name + '">Reset&nbsp;Stats</a>',
-      '<br>',
-      '<a href="javascript:" data-action="clear_ike" data-p1name="' + name + '">Clear&nbsp;IKE</a>',
+      '<a href="javascript:" data-action="expand_debug" title="Debug options">&nbsp;<f-icon class="fa-plus-circle"></f-icon>&nbsp;</a>',
+      '<div style="display:none;text-align:left">',
+      'Config:&nbsp;<a href="javascript:" data-action="send_ws_command" data-command="show vpn ipsec phase1-interface '+ (parent ?? name) + '" title="show vpn ipsec phase1-interface ' + (parent ?? name) + '">Phase&nbsp;1</a>,&nbsp;<a href="javascript:" data-action="send_ws_command" data-command="show vpn ipsec phase2-interface ' + (parent ?? name) + '" title="show vpn ipsec phase2-interface ' + (parent ?? name) + '">Phase&nbsp;2</a><br>',
+      'Status:&nbsp;<a href="javascript:" data-action="send_ws_command" data-command="get vpn ike gateway ' + (parent ?? name) + '" title="get vpn ike gateway ' + (parent ?? name) + '">Phase&nbsp;1</a>,&nbsp;<a href="javascript:" data-action="send_ws_command" data-command="get vpn ipsec tunnel name ' + (parent ?? name) + '" title="get vpn ipsec tunnel name ' + (parent ?? name) + '">Phase&nbsp;2</a><br>',
+      'Diag:&nbsp;<a href="https://community.fortinet.com/t5/Support-Forum/FortiGate-WebUI-Tools-gt-IPsec-VPN-debug/m-p/282214" title="Recommend diag commands in Fortinet Community" target="_blank">Recommend</a><br>',
+      '<span style="color:DarkViolet">Reset:</span>&nbsp;<a href="javascript:" data-action="reset_stats" data-p1name="' + name + '">Stats</a>,&nbsp;<a href="javascript:" data-action="clear_ike" data-p1name="' + name + '">Tunnel</a>',
       '</div>'
+    );
+  }
+
+  function formatLogs(name, parent) {
+    const url_name = '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + name + '"}';
+    const url_parent = '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + parent + '"}';
+    return "".concat(
+      '<a href="' + encodeURI(url_name) + '" title="Show logs" target="_blank">Show</a>',
+      parent ?
+        "".concat(
+          '<br>',
+          '<a href="' + encodeURI(url_parent) + '" title="Show parent logs" target="_blank">&gt; Parent</a>',
+        ) : ""
     );
   }
 
@@ -317,29 +428,37 @@ javascript: (async function () {
     .then(response => showStatus("POST", response));
   }
 
+  async function showP1Config(p1name) {
+    if (!ws) setupWebSocket();
+    active_command = 'show vpn ipsec phase1-interface ' + p1name;
+    sendCommand('show vpn ipsec phase1-interface ' + p1name);
+  }
+
+  async function sendWsCommand(command) {
+    if (!ws) setupWebSocket();
+    it = "send_ws_command";
+    active_command = command;
+    sendCommand(command);
+  }
+
   function documentClick(event) {
     const actionElement = event.target.closest("a");
 
-    if (!actionElement)
-      return;
+    if (!actionElement) return;
 
     switch (actionElement.dataset.action) {
       case "expand_proxies":
         if (actionElement.dataset.expanded == null) {
           actionElement.dataset.expanded = "expanded";
-
           actionElement.innerText = "- Less";
-
           actionElement.nextElementSibling.style.display = "block";
         }
         else {
           delete actionElement.dataset.expanded;
-
           actionElement.innerText = "+ More";
-
           actionElement.nextElementSibling.style.display = "none";
         }
-        
+
         break;
 
       case "tunnel_up":
@@ -353,19 +472,15 @@ javascript: (async function () {
       case "expand_debug":
         if (actionElement.dataset.expanded == null) {
           actionElement.dataset.expanded = "expanded";
-
           actionElement.innerHTML = '&nbsp;<f-icon class="fa-minus-circle"></f-icon>&nbsp;';
-
           actionElement.nextElementSibling.style.display = "block";
         }
         else {
           delete actionElement.dataset.expanded;
-
           actionElement.innerHTML = '&nbsp;<f-icon class="fa-plus-circle"></f-icon>&nbsp;';
-
           actionElement.nextElementSibling.style.display = "none";
         }
-        
+
         break;
 
       case "reset_stats":
@@ -375,9 +490,17 @@ javascript: (async function () {
       case "clear_ike":
         clearIke(actionElement.dataset.p1name);
         break;
+
+      case "show_p1_config":
+        it = "showp1config";
+        showP1Config(actionElement.dataset.p1name);
+        break;
+
+      case "send_ws_command":
+        sendWsCommand(actionElement.dataset.command);
+        break;
     }
   }
-
 
   fetch('https://api.github.com/repos/fwsec/fgt-webui-tools/contents')
     .then(response => {
@@ -580,9 +703,6 @@ javascript: (async function () {
               });
           }
 
-          // find out columnspan for parent headers
-
-
           // set rowspan for non-parent headers
           const subheaderHtml = subheaders ? '<tr>' + subheaders.flatMap(m => m.headers).map(subheader => '<td style="border:1px solid grey;text-align:center;">' + subheader + '</td>').join('') + '</tr>' : "";
 
@@ -643,7 +763,7 @@ javascript: (async function () {
           data = beautifyData(data, tableEntryFunc);
 
           return '<tr>' + data.map(d => {
-            return '<td style="border:1px solid grey;text-align:center">'+d+'</td>';
+            return '<td>'+d+'</td>';
           }).join('') + '</tr>'
         }).filter(f => f != "").join("\n");
       }
@@ -676,14 +796,19 @@ javascript: (async function () {
         tableEl = tableMode ? document.createElement("table") : document.createElement("code");
         tableEl.dataset.command = active_command;
         tableEl.dataset.active = "active";
+        tableEl.classList.add("language-bash");
         tableEl.style.margin = "1rem";
         tableEl.style.display = "block";
         const liEl = document.querySelector('li[data-command="'+active_command+'"]');
         if(!tableMode) {
           preEl.appendChild(tableEl);
-          insertAfter(preEl, liEl);
+          if(liEl){
+            insertAfter(preEl, liEl);
+          }
         } else {
-          insertAfter(tableEl, liEl);
+          if(liEl) {
+            insertAfter(tableEl, liEl);
+          }
         }
       }
 
@@ -695,15 +820,18 @@ javascript: (async function () {
         case "sys_cmd":
           headers = ['Key', 'Value']
           tableEl.innerHTML = buildTable(msg, headers, undefined, undefined, ': ');
+          tableEl.classList.add('left-align');
           break;
         case "arp_cmd1":
           headers = ['IP Address', 'Age(min)', 'MAC Address', 'Interface'];
           tableEl.innerHTML = buildTable(msg, headers);
+          tableEl.classList.add('left-align');
           break;
         case "arp_cmd2":
           headers = ['Index', 'Interface', 'IP Address', 'MAC Address', 'Status', 'Use', 'Confirm', 'Update', 'Ref']
           invisibleHeaders= ['Index']
           tableEl.innerHTML = buildTable(msg, headers, invisibleHeaders, (line) => line.substring(line.indexOf("=")+1));
+          tableEl.classList.add('left-align');
           break;
           case "ntp_info":
             tableEl.innerHTML = formatNtpResponse(msg);
@@ -724,26 +852,84 @@ javascript: (async function () {
               const encryptionIdx = findIndexOfSpecificString(sectionLines, 'Encryption');
               const integrityIdx = findIndexOfSpecificString(sectionLines, 'Integrity');
               let encryptionContent = sectionLines.slice(encryptionIdx+1, integrityIdx);
-              encryptionContent = encryptionContent.map((m,i) => {const values = m.split(":")[1].split(" ").filter(e => e).map(m => ' ' + m + ' ').join("/\r\n").replace(' 0 /\r\n 0 ', ' - '); return values;})
+              encryptionContent = encryptionContent.map((m,i) => {const values = m.split(":")[1].split(" ").filter(e => e).map((m, i) => ' ' + m + ' ').join("/\r\n").replace(' 0 /\r\n 0 ', ' - '); return values;})
               let integrityContent = sectionLines.slice(integrityIdx+1);
-              integrityContent = integrityContent.map((m,i) => {const values = m.split(":")[1].split(" ").filter(e => e).map(m => ' ' + m + ' ').join("/\r\n").replace(' 0 /\r\n 0 ', ' - '); return values;})
+              integrityContent = integrityContent.map((m,i) => {const values = m.split(":")[1].split(" ").filter(e => e).map((m, i) => ' ' + m + ' ').join("/\r\n").replace(' 0 /\r\n 0 ', ' - '); return values;})
               return '<td style="border:1px solid grey;text-align:center"><div style="white-space: pre-wrap;">' + device + '</div></td>' + '\r\n' +
-              encryptionContent.map(m => '<td style="border:1px solid grey;text-align:center"><div style="white-space: pre-wrap;">' + m + '</div></td>') + '\r\n' +
-              integrityContent.map(m => '<td style="border:1px solid grey;text-align:center"><div style="white-space: pre-wrap;">' + m + '</div></td>');
+              encryptionContent.map((m,i) => '<td style="' + getStyleBackgroundColor(m, i) + 'border:1px solid grey;text-align:center"><div style="white-space: pre-wrap;">' + m + '</div></td>') + '\r\n' +
+              integrityContent.map((m,i) => '<td style="' + getStyleBackgroundColor(m, i) + 'border:1px solid grey;text-align:center"><div style="white-space: pre-wrap;">' + m + '</div></td>');
             }).map(tableRow => '<tr>' + tableRow + '</tr>');
-            return tableRows.join("");
+            return tableRows.join("\r\n");
           }
           tableEl.innerHTML = buildTable(msg, headers, invisibleHeaders, undefined, undefined, contentFunc, subheaders);
 
-          // not sure what's adding so many commas. Guess there's an empty array entry somewhere
           while(tableEl.innerHTML.endsWith(',')) { tableEl.innerHTML = tableEl.innerHTML.substring(0, tableEl.innerHTML.length - 2) }
           break;
+
+        case "showp1config":
+          const modalContent = getShowP1ConfigModalContent();
+          openShowP1ConfigModal();
+          // modalContent.innerHTML = '';
+          tableEl.innerHTML = msg;
+
+          if(modalContent.children.length < 2) {
+            modalContent.appendChild(preEl);
+          } else {
+            const currentTable = document.querySelector("#showP1ConfigModal pre");
+            if(currentTable) {
+              const currentCode = document.querySelector("#showP1ConfigModal code");
+              currentTable.replaceChild(tableEl, currentCode);
+            }
+          }
+          const headerEl = document.querySelector('.modal .modal-header h2');
+          if(headerEl) {
+            headerEl.innerText = active_command;
+          }
+
+          break;
+
+        case "send_ws_command": {
+          const modalContent = getShowP1ConfigModalContent();
+
+          openShowP1ConfigModal();
+
+          tableEl.innerHTML = msg;
+
+          if(modalContent.children.length < 2) {
+            modalContent.appendChild(preEl);
+          } else {
+            const currentTable = document.querySelector("#showP1ConfigModal pre");
+            if(currentTable) {
+              const currentCode = document.querySelector("#showP1ConfigModal code");
+              currentTable.replaceChild(tableEl, currentCode);
+            }
+          }
+          const headerEl = document.querySelector('.modal .modal-header h2');
+          if(headerEl) {
+            headerEl.innerText = active_command;
+          }
+
+          break;
+        }
+
         default:
           tableEl.innerHTML += msg;
           break;
       }
 
       Prism.highlightAll();
+    }
+
+    function getStyleBackgroundColor(value, columnIndex){
+      return "background-color:" + getCellColor(value, columnIndex) + ";";
+    }
+
+    function getCellColor(value, columnIndex){
+      if(value.trim() == '-'){
+        return '';
+      }
+
+      return [0, 1, 2, 8, 9, 10].includes(columnIndex)  ? 'pink' : 'lightgreen';
     }
 
     let currentMessage = "";
@@ -817,9 +1003,8 @@ javascript: (async function () {
         label: "System info",
         content: "",
         script: function (parentEl) {
-          if (!ws) {
-            setupWebSocket();
-          }
+          if (!ws) setupWebSocket();
+
           const commandListEl = document.createElement("ul");
           commandListEl.id = "system-info-command-list";
 
@@ -875,9 +1060,7 @@ javascript: (async function () {
         label: "ARP info",
         content: "",
         script: function (parentEl) {
-          if (!ws) {
-            setupWebSocket();
-          }
+          if (!ws) setupWebSocket();
           const commandListEl = document.createElement("ul");
           commandListEl.id = "system-arp-command-list";
 
@@ -1183,13 +1366,12 @@ javascript: (async function () {
             s=s.replace(/undefined/g,'-');
             p.innerHTML = "<span style='color:green'>Current system time:</span><br>"+date+"<br>&nbsp;<br>"+s+"</table><p style=\"white-space:nowrap\">NTP server mode:&nbsp;"+ctp.results["server-mode"].replace(/[eE]nable/g,'<span style="color:green">Enabled</span>').replace(/[dD]isable/g,'<span style="color:pink">Disabled</span>');
 
-          if (!ws) {
-            setupWebSocket();
-          }
-          const commandListEl = document.createElement("ul");
-          commandListEl.id = "ntp-sync-command-list";
+            if (!ws) setupWebSocket();
 
-          ntp_cmd.forEach((command) => {
+            const commandListEl = document.createElement("ul");
+            commandListEl.id = "ntp-sync-command-list";
+
+            ntp_cmd.forEach((command) => {
             const el = document.createElement("li");
             el.style.marginBottom = "1rem";
             el.style.color = "green";
@@ -1199,12 +1381,10 @@ javascript: (async function () {
             el.innerHTML = "&nbsp;"+command+cmdview;
             el.onclick = function () {
               it = "ntp_info";
-              if (this.innerHTML.substr(6, 4) == "diag") {
-                it = "default";
-              }
-              if (!ws) {
-                setupWebSocket();
-              }
+              if (this.innerHTML.substr(6, 4) == "diag") { it = "default"; }
+
+              if (!ws) setupWebSocket();
+
               const tableEl =
                 this.nextSibling && this.nextSibling.nodeName === "PRE"
                   ? this.nextSibling
@@ -1248,7 +1428,7 @@ javascript: (async function () {
             "/api/v2/monitor/system/available-interfaces?&vdom=root&view_type=limited"
           );
           const results = await interfaceCall.json();
-            const defaultColumnSet = new Set(["status","name","srcintf","dstintf","srcaddr","dstaddr","service","nat","schedule","action","logtraffic","comments"]);
+          const defaultColumnSet = new Set(["status","name","srcintf","dstintf","srcaddr","dstaddr","service","nat","schedule","action","logtraffic","comments"]);
 
           const columnSet = new Set();
 
@@ -1404,12 +1584,11 @@ javascript: (async function () {
         label: "IPsec tunnels",
         content: "",
         script: async function (parentEl) {
-          if (!ws) {
-            setupWebSocket();
-          }
-
+          if (!ws) setupWebSocket();
           const columnAliases = {
-            "name": "Status / Name",
+            "name": "Name",
+            "parent": "Parent",
+            "rport": "Remote Port",
             "rgwy": "Remote Gateway",
             "username": "Peer ID",
             "creation_time": "Phase 1",
@@ -1424,13 +1603,12 @@ javascript: (async function () {
             "connection_count": "Connection Count"
           };
 
-          const defaultColumnSet = new Set(["name", "rgwy", "username", "incoming_bytes", "outgoing_bytes", "creation_time", "proxyid"]);
+          const defaultColumnSet = new Set(["rgwy","username","incoming_bytes","outgoing_bytes","creation_time","proxyid"]);
+          const allColumnSet = new Set(["name","parent","type","tun_id","tun_id6","rgwy","username","incoming_bytes","outgoing_bytes","creation_time","proxyid","wizard-type","connection_count","comments"]);
 
           const run = async () => {
             const dataPromise = fetch("/api/v2/monitor/vpn/ipsec");
-
             const data = await dataPromise;
-
             const ipsec = await data.json();
 
             ipsec.results.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
@@ -1488,10 +1666,11 @@ javascript: (async function () {
                   '&nbsp;&nbsp;&nbsp;&nbsp;<span id="api-status" style="color: gray;"></span>',
                   '<div style="width:100%;overflow:auto">',
                   '<table class="sticky-table" style="margin-bottom:10px;border-spacing: 0;">',
-                  '<tr class="sticky-table header" style="position:sticky;top:0;text-align:left;vertical-align:top;text-wrap:nowrap;color:#fff;background-color:#5A5A5A;border-spacing:0;border-collapse:collapse;z-index:1">',
+                  '<tr class="sticky-table header" style="position:sticky;top:0;text-align:left;vertical-align:top;white-space:nowrap;color:#fff;background-color:#5A5A5A;border-spacing:0;border-collapse:collapse;z-index:1">',
                   '<td style="padding: 5px; text-align: center;">',
                   '#',
                   '</td>',
+                  '<td style="padding: 5px;">Tunnel</td>',
                   [...activeColumnSet].map(c => {
                     return "".concat(
                       '<td style="padding: 5px;">',
@@ -1499,23 +1678,25 @@ javascript: (async function () {
                       '</td>'
                     )
                   }).join(""),
+                  '<td style="padding: 5px;">Log</td>',
                   '<td style="padding: 5px; text-align: center;">Debugs</td>',
                   '</tr>',
                   ipsec.results.filter(p => p.proxyid != null && p.connection_count != null).map((p, pi) => {
                     const bgColor = pi % 2 ? "rgba(0, 0, 0, .1)" : "rgba(0, 0, 0, .3)";
 
                     return "".concat(
-                      '<tr style="text-align: left; vertical-align: top; text-wrap: nowrap; background-color: ' + bgColor + '">',
+                      '<tr style="text-align: left; vertical-align: top; white-space: nowrap; background-color: ' + bgColor + '">',
                       '<td style="padding: 5px; text-align: center;">',
                       (pi + 1),
+                      '</td>',
+                      '<td style="padding: 5px;">',
+                      formatIpsecName(p["name"], p["parent"], p["proxyid"]),
                       '</td>',
                       [...activeColumnSet].map(c => {
                         return "".concat(
                           '<td style="padding: 5px">',
                             p[c] == null ?
                               "" :
-                            c == "name" ?
-                              formatIpsecName(p[c], p["proxyid"]) :
                             c == "username" ?
                               formatUsername(p[c]) :
                             c == "incoming_bytes" || c == "outgoing_bytes" ?
@@ -1533,8 +1714,11 @@ javascript: (async function () {
                           '</td>'
                         )
                       }).join(""),
+                      '<td style="padding: 5px;">',
+                      formatLogs(p["name"], p["parent"]),
+                      '</td>',
                       '<td style="padding: 5px; text-align: center;">',
-                      formatDebug(p["name"]),
+                      formatDebug(p["name"], p["parent"]),
                       '</td>',
                       '</tr>'
                     )
@@ -1585,6 +1769,9 @@ javascript: (async function () {
               document.getElementById("ipsec-customizer-all").addEventListener("click", () => {
                 activeColumnSet.clear();
 
+                for (const allColumn of allColumnSet)
+                  activeColumnSet.add(allColumn);
+
                 for (const column of columnSet)
                   activeColumnSet.add(column);
 
@@ -1610,9 +1797,8 @@ javascript: (async function () {
                 el.onclick = function () {
                   it = "ipsec_tunnel";
 
-                  if (!ws) {
-                    setupWebSocket();
-                  }
+                  if (!ws) setupWebSocket();
+
                   const tableEl =
                     this.nextSibling && this.nextSibling.nodeName === "PRE"
                       ? this.nextSibling
@@ -1731,7 +1917,6 @@ javascript: (async function () {
       }
       ngApp.parentElement.insertBefore(resultEl, ngApp);
         o = item.content;
-
       resultEl.style.width = "calc(100% - 3rem)";
       resultEl.innerHTML = "".concat('<div style="position:relative;overflow-y:auto"><pre style="padding:1em;margin:0;display:flex"><code style="width:100%; display:flex; justify-content:center">', o || loading, '</code></pre></div>');
       const parent = ngApp.parentElement;
