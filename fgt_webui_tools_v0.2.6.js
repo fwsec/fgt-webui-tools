@@ -346,9 +346,9 @@ javascript: (async function () {
     );
   }
 
-  function formatLogs(name, parent, version) {
-    const url_name = version.startsWith("v7.0") ? '/ng/log/view/event/vpn?filter=vpntunnel=*"' + name + '"' : '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + name + '"}';
-    const url_parent = version.startsWith("v7.0") ? '/ng/log/view/event/vpn?filter=vpntunnel=*"' + parent + '"' : '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + parent + '"}';
+  function formatLogs(name, parent, ver) {
+    const url_name = ver.startsWith("v7.0") ? '/ng/log/view/event/vpn?filter=vpntunnel=*"' + name + '"' : '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + name + '"}';
+    const url_parent = ver.startsWith("v7.0") ? '/ng/log/view/event/vpn?filter=vpntunnel=*"' + parent + '"' : '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + parent + '"}';
     return "".concat(
       '<a href="' + encodeURI(url_name) + '" title="Show logs" target="_blank">Show</a>',
       parent ?
