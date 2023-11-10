@@ -346,9 +346,9 @@ javascript: (async function () {
     );
   }
 
-  function formatLogs(name, parent) {
-    const url_name = '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + name + '"}';
-    const url_parent = '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + parent + '"}';
+  function formatLogs(name, parent, version) {
+    const url_name = version.startsWith("v7.0") ? '/ng/log/view/event/vpn?filter=vpntunnel=*"' + name + '"' : '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + name + '"}';
+    const url_parent = version.startsWith("v7.0") ? '/ng/log/view/event/vpn?filter=vpntunnel=*"' + parent + '"' : '/log/event-log?tab=logs&type=vpn&vdom=root&filter={"vpntunnel":"= ' + parent + '"}';
     return "".concat(
       '<a href="' + encodeURI(url_name) + '" title="Show logs" target="_blank">Show</a>',
       parent ?
@@ -1600,6 +1600,7 @@ javascript: (async function () {
             "tun_id6": "Local Gateway (IPv6)",
             "type": "Type",
             "wizard-type": "Wizard Type",
+            "dialup_index": "Dialup Index",
             "connection_count": "Connection Count"
           };
 
@@ -1678,7 +1679,7 @@ javascript: (async function () {
                       '</td>'
                     )
                   }).join(""),
-                  '<td style="padding: 5px;">Log</td>',
+                  '<td style="padding: 5px;">Logs</td>',
                   '<td style="padding: 5px; text-align: center;">Debugs</td>',
                   '</tr>',
                   ipsec.results.filter(p => p.proxyid != null && p.connection_count != null).map((p, pi) => {
@@ -1715,7 +1716,7 @@ javascript: (async function () {
                         )
                       }).join(""),
                       '<td style="padding: 5px;">',
-                      formatLogs(p["name"], p["parent"]),
+                      formatLogs(p["name"], p["parent"], ipsec.version),
                       '</td>',
                       '<td style="padding: 5px; text-align: center;">',
                       formatDebug(p["name"], p["parent"]),
